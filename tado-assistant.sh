@@ -114,13 +114,18 @@ homeState() {
      mobile_devices=$(curl -s -X GET "https://my.tado.com/api/v2/homes/$home_id/mobileDevices" -H "Authorization: Bearer ${TOKENS[$account_index]}")
     handle_curl_error
 
+    mapfile -t devices_tracking_enabled < <(echo "$mobile_devices" | jq -r '.[] | select(.settings.geoTrackingEnabled == true) | .name')
+    handle_curl_error
+    
     mapfile -t devices_home < <(echo "$mobile_devices" | jq -r '.[] | select(.settings.geoTrackingEnabled == true and .location.atHome == true) | .name')
     handle_curl_error
 
     if [ "$ENABLE_GEOFENCING" == true ]; then
       log_message "🏠 Account $account_index: Geofencing enabled."
       local devices_str
-      if [ ${#devices_home[@]} -gt 0 ] && [ "$home_state" == "HOME" ]; then
+      if  [ ${#devices_tracking_enabled[@]} -eq 0 ]; then
+          log_message "No devices with geo tracking enabled found. Skipping geofencing."
+      elif [ ${#devices_home[@]} -gt 0 ] && [ "$home_state" == "HOME" ]; then
           devices_str=$(IFS=,; echo "${devices_home[*]}")
           log_message "🏠 Account $account_index: Home is in HOME Mode, the devices $devices_str are at home."
       elif [ ${#devices_home[@]} -eq 0 ] && [ "$home_state" == "AWAY" ]; then
