@@ -100,9 +100,9 @@ stateDetection() {
     local home_state mobile_devices devices_away devices_str rooms room_id room_name home_id current_time account_index
     local open_window_detection_supported open_window_detection_enabled open_window_detected
 
-     account_index=$1
-     home_id=${HOME_IDS[$account_index]}
-     current_time=$(date +%s)
+    account_index=$1
+    home_id=${HOME_IDS[$account_index]}
+    current_time=$(date +%s)
 
     if [ -n "${EXPIRY_TIMES[$account_index]}" ] && [ "$current_time" -ge "${EXPIRY_TIMES[$account_index]}" ]; then
         login "$account_index" "TADO_USERNAME_$account_index" "TADO_PASSWORD_$account_index"
@@ -121,8 +121,10 @@ stateDetection() {
 
         local devices_str
         if  [ ${#devices_tracking_enabled[@]} -eq 0 ]; then
+            devices_str=$(IFS=,; echo "${devices_away[*]}")
             log_message "🏠 Account $account_index: No devices with geo tracking enabled found. Skipping geofencing."
         elif [ ${#devices_away[@]} -eq 0 ] && [ "$home_state" == "HOME" ]; then
+            devices_str=$(IFS=,; echo "${devices_away[*]}")
             #log_message "🏠 Account $account_index: Home is in HOME Mode, no devices are away."
         elif [ ${#devices_away[@]} -gt 0 ] && [ "$home_state" == "AWAY" ]; then
             devices_str=$(IFS=,; echo "${devices_away[*]}")
