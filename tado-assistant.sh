@@ -192,7 +192,8 @@ homeState() {
 
                 # Record the activation time
                 OPEN_WINDOW_ACTIVATION_TIMES[$room_id]=$current_time
-            elseif [ "$openWwindowState_activated" == "true" ]; then
+                
+            elif [ "$openWwindowState_activated" == "true" ]; then
                 # Check if the open window mode was recently activated and MAX_OPEN_WINDOW_DURATION is set
                 if [ -n "${OPEN_WINDOW_ACTIVATION_TIMES[$room_id]}" ] && [ -n "$MAX_OPEN_WINDOW_DURATION" ]; then
                     local activation_time=${OPEN_WINDOW_ACTIVATION_TIMES[$room_id]}
