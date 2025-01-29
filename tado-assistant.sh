@@ -123,10 +123,10 @@ stateDetection() {
         if  [ ${#devices_tracking_enabled[@]} -eq 0 ]; then
             log_message "🏠 Account $account_index: No devices with geo tracking enabled found. Skipping geofencing."
         elif [ ${#devices_away[@]} -eq 0 ] && [ "$home_state" == "HOME" ]; then
-            log_message "🏠 Account $account_index: Home is in HOME Mode, no devices are away."
+            #log_message "🏠 Account $account_index: Home is in HOME Mode, no devices are away."
         elif [ ${#devices_away[@]} -gt 0 ] && [ "$home_state" == "AWAY" ]; then
             devices_str=$(IFS=,; echo "${devices_away[*]}")
-            log_message "🚶 Account $account_index: Home is in AWAY Mode and the devices $devices_str are away."
+            #log_message "🚶 Account $account_index: Home is in AWAY Mode and the devices $devices_str are away."
         elif [ ${#devices_away[@]} -gt 0 ] && [ "$home_state" == "HOME" ]; then
             devices_str=$(IFS=,; echo "${devices_away[*]}")
             log_message "🏠 Account $account_index: Home is in HOME Mode but the devices $devices_str are away."
