@@ -210,7 +210,7 @@ stateDetection() {
     if [ "$ENABLE_GEOFENCING" == true ]; then  
         if  [ ${#devices_tracking_enabled[@]} -eq 0 ]; then
             log_message "⏳ Account $account_index: Waiting for trackable devices or for an open window..."
-        elif
+        else
             log_message "⏳ Account $account_index: Waiting for a change in devices location or for an open window..."
         fi
     else
