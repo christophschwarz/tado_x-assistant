@@ -120,32 +120,30 @@ stateDetection() {
         mapfile -t devices_away < <(echo "$mobile_devices" | jq -r '.[] | select(.settings.geoTrackingEnabled == true and .location.atHome == false and .location.stale == false) | .name')
 
         local devices_str
-        if  [ ${#devices_tracking_enabled[@]} -eq 0 ]; then
+        if  [ ${#devices_tracking_enabled[@]} -gt 0 ]; then
             devices_str=$(IFS=,; echo "${devices_away[*]}")
-            log_message "🏠 Account $account_index: No devices with geo tracking enabled found. Skipping geofencing."
-        elif [ ${#devices_away[@]} -eq 0 ] && [ "$home_state" == "HOME" ]; then
-            devices_str=$(IFS=,; echo "${devices_away[*]}")
-            #log_message "🏠 Account $account_index: Home is in HOME Mode, no devices are away."
-        elif [ ${#devices_away[@]} -gt 0 ] && [ "$home_state" == "AWAY" ]; then
-            devices_str=$(IFS=,; echo "${devices_away[*]}")
-            #log_message "🚶 Account $account_index: Home is in AWAY Mode and the devices $devices_str are away."
-        elif [ ${#devices_away[@]} -gt 0 ] && [ "$home_state" == "HOME" ]; then
-            devices_str=$(IFS=,; echo "${devices_away[*]}")
-            log_message "🏠 Account $account_index: Home is in HOME Mode but the devices $devices_str are away."
-            curl -s -X PUT "https://my.tado.com/api/v2/homes/$home_id/presenceLock" \
-              -H "Authorization: Bearer ${TOKENS[$account_index]}" \
-              -H "Content-Type: application/json" \
-              -d '{"homePresence": "AWAY"}'
-            handle_curl_error
-            log_message "🏠 Account $account_index: Activated AWAY mode."
-        elif [ ${#devices_away[@]} -eq 0 ] && [ "$home_state" == "AWAY" ]; then
-            log_message "🚶 Account $account_index: Home is in AWAY Mode but there are no devices away."
-            curl -s -X PUT "https://my.tado.com/api/v2/homes/$home_id/presenceLock" \
-              -H "Authorization: Bearer ${TOKENS[$account_index]}" \
-              -H "Content-Type: application/json" \
-              -d '{"homePresence": "HOME"}'
-            handle_curl_error
-            log_message "🏠 Account $account_index: Activated HOME mode."
+            if [ ${#devices_away[@]} -gt 0 ] && [ "$home_state" == "HOME" ]; then
+                devices_str=$(IFS=,; echo "${devices_away[*]}")
+                log_message "🏠 Account $account_index: Home is in HOME Mode but the devices $devices_str are away."
+                curl -s -X PUT "https://my.tado.com/api/v2/homes/$home_id/presenceLock" \
+                  -H "Authorization: Bearer ${TOKENS[$account_index]}" \
+                  -H "Content-Type: application/json" \
+                  -d '{"homePresence": "AWAY"}'
+                handle_curl_error
+                log_message "🏠 Account $account_index: Activated AWAY mode."
+            elif [ ${#devices_away[@]} -eq 0 ] && [ "$home_state" == "AWAY" ]; then
+                log_message "🚶 Account $account_index: Home is in AWAY Mode but there are no devices away."
+                curl -s -X PUT "https://my.tado.com/api/v2/homes/$home_id/presenceLock" \
+                  -H "Authorization: Bearer ${TOKENS[$account_index]}" \
+                  -H "Content-Type: application/json" \
+                  -d '{"homePresence": "HOME"}'
+                handle_curl_error
+                log_message "🏠 Account $account_index: Activated HOME mode."
+            #elif [ ${#devices_away[@]} -eq 0 ] && [ "$home_state" == "HOME" ]; then              
+            #    log_message "🏠 Account $account_index: Home is in HOME Mode, no devices are away."
+            #elif [ ${#devices_away[@]} -gt 0 ] && [ "$home_state" == "AWAY" ]; then
+            #    log_message "🚶 Account $account_index: Home is in AWAY Mode and the devices $devices_str are away."
+            fi
         fi
     fi
 
@@ -209,8 +207,12 @@ stateDetection() {
         fi
     done
 
-    if [ "$ENABLE_GEOFENCING" == true ]; then   
-        log_message "⏳ Account $account_index: Waiting for a change in devices location or for an open window..."
+    if [ "$ENABLE_GEOFENCING" == true ]; then  
+        if  [ ${#devices_tracking_enabled[@]} -eq 0 ]; then
+            log_message "⏳ Account $account_index: Waiting for trackable devices or for an open window..."
+        elif
+            log_message "⏳ Account $account_index: Waiting for a change in devices location or for an open window..."
+        fi
     else
         log_message "⏳ Account $account_index: Waiting for an open window..."
     fi
