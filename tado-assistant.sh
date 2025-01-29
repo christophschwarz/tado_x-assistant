@@ -97,7 +97,7 @@ log_message() {
 }
 
 homeState() {
-      local home_state mobile_devices devices_home devices_str zones zone_id zone_name home_id current_time account_index
+      local home_state mobile_devices devices_home devices_str rooms room_id room_name home_id current_time account_index
       local open_window_detection_supported open_window_detection_enabled open_window_detected
 
      account_index=$1
@@ -152,56 +152,63 @@ homeState() {
       log_message "🏠 Account $account_index: Geofencing disabled."
     fi
 
-      # Fetch zones for the home
-         zones=$(curl -s -X GET "https://my.tado.com/api/v2/homes/$home_id/zones" -H "Authorization: Bearer ${TOKENS[$account_index]}")
+      # Fetch rooms for the home
+         rooms=$(curl -s -X GET "https://hops.tado.com/homes/$home_id/rooms?ngsw-bypass=true" -H "Authorization: Bearer ${TOKENS[$account_index]}")
         handle_curl_error
 
-        echo "$zones" | jq -c '.[]' | while read -r zone; do
-             zone_id=$(echo "$zone" | jq -r '.id')
-             zone_name=$(echo "$zone" | jq -r '.name')
+        echo "$rooms" | jq -c '.[]' | while read -r room; do
+             room_id=$(echo "$room" | jq -r '.id')
+             room_name=$(echo "$room" | jq -r '.name')
 
-             open_window_detection_supported=$(echo "$zone" | jq -r '.openWindowDetection.supported')
-            if [ "$open_window_detection_supported" = false ]; then
+            # Not supported by Tado X??
+             #open_window_detection_supported=$(echo "$room" | jq -r '.openWindowDetection.supported')
+            #if [ "$open_window_detection_supported" = false ]; then
+                #continue
+            #fi
+
+            # Not supported by Tado X??
+            #open_window_detection_enabled=$(echo "$room" | jq -r '.openWindowDetection.enabled')
+            #if [ "$open_window_detection_enabled" = false ]; then
+                #continue
+            #fi
+
+            openWindowState=$(echo $room | jq -r '.openWindow')
+
+            if [ "$openWindowState" == "null" ]; then
                 continue
             fi
 
-            open_window_detection_enabled=$(echo "$zone" | jq -r '.openWindowDetection.enabled')
-            if [ "$open_window_detection_enabled" = false ]; then
-                continue
-            fi
+            openWwindowState_activated=$(echo $openWindowState | jq -r '.activated')
 
-            open_window_detected=$(curl -s -X GET "https://my.tado.com/api/v2/homes/$home_id/zones/$zone_id/state" -H "Authorization: Bearer ${TOKENS[$account_index]}" | jq -r '.openWindowDetected')
-            handle_curl_error
-
-            if [ "$open_window_detected" == "true" ]; then
+            if [ "$openWwindowState_activated" == "false" ]; then
                 current_time=$(date +%s)
 
+                log_message "❄️ Account $account_index: $room_name: Open window detected, activating OpenWindow mode."
+                # Set open window mode for the room
+                curl -s -X POST "https://hops.tado.com/homes/$home_id/rooms/$room_id/openWindow?ngsw-bypass=true" \
+                    -H "Authorization: Bearer ${TOKENS[$account_index]}"
+                handle_curl_error
+                log_message "🌬️ Account $account_index: Activating open window mode for $room_name."
+
+                # Record the activation time
+                OPEN_WINDOW_ACTIVATION_TIMES[$room_id]=$current_time
+            elseif [ "$openWwindowState_activated" == "true" ]; then
                 # Check if the open window mode was recently activated and MAX_OPEN_WINDOW_DURATION is set
-                if [ -n "${OPEN_WINDOW_ACTIVATION_TIMES[$zone_id]}" ] && [ -n "$MAX_OPEN_WINDOW_DURATION" ]; then
-                    local activation_time=${OPEN_WINDOW_ACTIVATION_TIMES[$zone_id]}
+                if [ -n "${OPEN_WINDOW_ACTIVATION_TIMES[$room_id]}" ] && [ -n "$MAX_OPEN_WINDOW_DURATION" ]; then
+                    local activation_time=${OPEN_WINDOW_ACTIVATION_TIMES[$room_id]}
                     local time_diff=$((current_time - activation_time))
 
                     if [ "$time_diff" -gt "$MAX_OPEN_WINDOW_DURATION" ]; then
-                        log_message "❄️ Account $account_index: $zone_name: Open window detected for more than $MAX_OPEN_WINDOW_DURATION seconds. Cancelling open window mode."
-                        # Cancel open window mode for the zone
-                        curl -s -X DELETE "https://my.tado.com/api/v2/homes/$home_id/zones/$zone_id/state/openWindow" \
+                        log_message "❄️ Account $account_index: $room_name: Open window detected for more than $MAX_OPEN_WINDOW_DURATION seconds. Cancelling open window mode."
+                        # Cancel open window mode for the room
+                        curl -s -X DELETE "https://hops.tado.com/homes/$home_id/rooms/$room_id/openWindow?ngsw-bypass=true" \
                             -H "Authorization: Bearer ${TOKENS[$account_index]}"
                         handle_curl_error
-                        log_message "✅ Account $account_index: Cancelled open window mode for $zone_name."
-                        unset "OPEN_WINDOW_ACTIVATION_TIMES[$zone_id]"
+                        log_message "✅ Account $account_index: Cancelled open window mode for $room_name."
+                        unset "OPEN_WINDOW_ACTIVATION_TIMES[$room_id]"
                         continue
                     fi
                 fi
-
-                log_message "❄️ Account $account_index: $zone_name: Open window detected, activating OpenWindow mode."
-                # Set open window mode for the zone
-                curl -s -X POST "https://my.tado.com/api/v2/homes/$home_id/zones/$zone_id/state/openWindow/activate" \
-                    -H "Authorization: Bearer ${TOKENS[$account_index]}"
-                handle_curl_error
-                log_message "🌬️ Account $account_index: Activating open window mode for $zone_name."
-
-                # Record the activation time
-                OPEN_WINDOW_ACTIVATION_TIMES[$zone_id]=$current_time
             fi
         done
 
