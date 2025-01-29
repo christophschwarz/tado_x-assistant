@@ -96,9 +96,9 @@ log_message() {
     echo "$(date '+%d-%m-%Y %H:%M:%S') # $message"
 }
 
-homeState() {
-      local home_state mobile_devices devices_home devices_str rooms room_id room_name home_id current_time account_index
-      local open_window_detection_supported open_window_detection_enabled open_window_detected
+stateDetection() {
+    local home_state mobile_devices devices_away devices_str rooms room_id room_name home_id current_time account_index
+    local open_window_detection_supported open_window_detection_enabled open_window_detected
 
      account_index=$1
      home_id=${HOME_IDS[$account_index]}
@@ -108,113 +108,111 @@ homeState() {
         login "$account_index" "TADO_USERNAME_$account_index" "TADO_PASSWORD_$account_index"
     fi
 
-     home_state=$(curl -s -X GET "https://my.tado.com/api/v2/homes/$home_id/state" -H "Authorization: Bearer ${TOKENS[$account_index]}" | jq -r '.presence')
-    handle_curl_error
-
-     mobile_devices=$(curl -s -X GET "https://my.tado.com/api/v2/homes/$home_id/mobileDevices" -H "Authorization: Bearer ${TOKENS[$account_index]}")
-    handle_curl_error
-
-    mapfile -t devices_tracking_enabled < <(echo "$mobile_devices" | jq -r '.[] | select(.settings.geoTrackingEnabled == true) | .name')
-    handle_curl_error
+    # Do geofencing when enabled
+    if [ "$ENABLE_GEOFENCING" == true ]; then    
+        home_state=$(curl -s -X GET "https://my.tado.com/api/v2/homes/$home_id/state" -H "Authorization: Bearer ${TOKENS[$account_index]}" | jq -r '.presence')
+        handle_curl_error
     
-    mapfile -t devices_home < <(echo "$mobile_devices" | jq -r '.[] | select(.settings.geoTrackingEnabled == true and .location.atHome == true) | .name')
-    handle_curl_error
+        mobile_devices=$(curl -s -X GET "https://my.tado.com/api/v2/homes/$home_id/mobileDevices" -H "Authorization: Bearer ${TOKENS[$account_index]}")
+        handle_curl_error
+    
+        mapfile -t devices_tracking_enabled < <(echo "$mobile_devices" | jq -r '.[] | select(.settings.geoTrackingEnabled == true) | .name')        
+        mapfile -t devices_away < <(echo "$mobile_devices" | jq -r '.[] | select(.settings.geoTrackingEnabled == true and .location.atHome == false and .location.stale == false) | .name')
 
-    if [ "$ENABLE_GEOFENCING" == true ]; then
-      log_message "🏠 Account $account_index: Geofencing enabled."
-      local devices_str
-      if  [ ${#devices_tracking_enabled[@]} -eq 0 ]; then
-          log_message "🏠 Account $account_index: No devices with geo tracking enabled found. Skipping geofencing."
-      elif [ ${#devices_home[@]} -gt 0 ] && [ "$home_state" == "HOME" ]; then
-          devices_str=$(IFS=,; echo "${devices_home[*]}")
-          log_message "🏠 Account $account_index: Home is in HOME Mode, the devices $devices_str are at home."
-      elif [ ${#devices_home[@]} -eq 0 ] && [ "$home_state" == "AWAY" ]; then
-          log_message "🚶 Account $account_index: Home is in AWAY Mode and there are no devices at home."
-      elif [ ${#devices_home[@]} -eq 0 ] && [ "$home_state" == "HOME" ]; then
-          log_message "🏠 Account $account_index: Home is in HOME Mode but there are no devices at home."
-          curl -s -X PUT "https://my.tado.com/api/v2/homes/$home_id/presenceLock" \
+        local devices_str
+        if  [ ${#devices_tracking_enabled[@]} -eq 0 ]; then
+            log_message "🏠 Account $account_index: No devices with geo tracking enabled found. Skipping geofencing."
+        elif [ ${#devices_away[@]} -eq 0 ] && [ "$home_state" == "HOME" ]; then
+            log_message "🏠 Account $account_index: Home is in HOME Mode, no devices are away."
+        elif [ ${#devices_away[@]} -gt 0 ] && [ "$home_state" == "AWAY" ]; then
+            devices_str=$(IFS=,; echo "${devices_away[*]}")
+            log_message "🚶 Account $account_index: Home is in AWAY Mode and the devices $devices_str are away."
+        elif [ ${#devices_away[@]} -gt 0 ] && [ "$home_state" == "HOME" ]; then
+            devices_str=$(IFS=,; echo "${devices_away[*]}")
+            log_message "🏠 Account $account_index: Home is in HOME Mode but the devices $devices_str are away."
+            curl -s -X PUT "https://my.tado.com/api/v2/homes/$home_id/presenceLock" \
               -H "Authorization: Bearer ${TOKENS[$account_index]}" \
               -H "Content-Type: application/json" \
               -d '{"homePresence": "AWAY"}'
-          handle_curl_error
-          log_message "Done! Activated AWAY mode for account $account_index."
-      elif [ ${#devices_home[@]} -gt 0 ] && [ "$home_state" == "AWAY" ]; then
-          devices_str=$(IFS=,; echo "${devices_home[*]}")
-          log_message "🚶 Account $account_index: Home is in AWAY Mode but the devices $devices_str are at home."
-          curl -s -X PUT "https://my.tado.com/api/v2/homes/$home_id/presenceLock" \
+            handle_curl_error
+            log_message "🏠 Account $account_index: Activated AWAY mode."
+        elif [ ${#devices_away[@]} -eq 0 ] && [ "$home_state" == "AWAY" ]; then
+            log_message "🚶 Account $account_index: Home is in AWAY Mode but there are no devices away."
+            curl -s -X PUT "https://my.tado.com/api/v2/homes/$home_id/presenceLock" \
               -H "Authorization: Bearer ${TOKENS[$account_index]}" \
               -H "Content-Type: application/json" \
               -d '{"homePresence": "HOME"}'
-          handle_curl_error
-          log_message "Done! Activated HOME mode for account $account_index."
-      fi
-    else
-      log_message "🏠 Account $account_index: Geofencing disabled."
+            handle_curl_error
+            log_message "🏠 Account $account_index: Activated HOME mode."
+        fi
     fi
 
-      # Fetch rooms for the home
-         rooms=$(curl -s -X GET "https://hops.tado.com/homes/$home_id/rooms?ngsw-bypass=true" -H "Authorization: Bearer ${TOKENS[$account_index]}")
-        handle_curl_error
+    # Fetch rooms for window detection
+    rooms=$(curl -s -X GET "https://hops.tado.com/homes/$home_id/rooms?ngsw-bypass=true" -H "Authorization: Bearer ${TOKENS[$account_index]}")
+    handle_curl_error
 
-        echo "$rooms" | jq -c '.[]' | while read -r room; do
-             room_id=$(echo "$room" | jq -r '.id')
-             room_name=$(echo "$room" | jq -r '.name')
-
-            # Not supported by Tado X??
-             #open_window_detection_supported=$(echo "$room" | jq -r '.openWindowDetection.supported')
-            #if [ "$open_window_detection_supported" = false ]; then
-                #continue
-            #fi
-
-            # Not supported by Tado X??
-            #open_window_detection_enabled=$(echo "$room" | jq -r '.openWindowDetection.enabled')
-            #if [ "$open_window_detection_enabled" = false ]; then
-                #continue
-            #fi
-
-            openWindowState=$(echo $room | jq -r '.openWindow')
-
-            if [ "$openWindowState" == "null" ]; then
-                continue
-            fi
-
-            openWwindowState_activated=$(echo $openWindowState | jq -r '.activated')
-
-            if [ "$openWwindowState_activated" == "false" ]; then
-                current_time=$(date +%s)
-
-                log_message "❄️ Account $account_index: $room_name: Open window detected, activating OpenWindow mode."
-                # Set open window mode for the room
-                curl -s -X POST "https://hops.tado.com/homes/$home_id/rooms/$room_id/openWindow?ngsw-bypass=true" \
-                    -H "Authorization: Bearer ${TOKENS[$account_index]}"
-                handle_curl_error
-                log_message "🌬️ Account $account_index: Activating open window mode for $room_name."
-
-                # Record the activation time
-                OPEN_WINDOW_ACTIVATION_TIMES[$room_id]=$current_time
-                
-            elif [ "$openWwindowState_activated" == "true" ]; then
-                # Check if the open window mode was recently activated and MAX_OPEN_WINDOW_DURATION is set
-                if [ -n "${OPEN_WINDOW_ACTIVATION_TIMES[$room_id]}" ] && [ -n "$MAX_OPEN_WINDOW_DURATION" ]; then
-                    local activation_time=${OPEN_WINDOW_ACTIVATION_TIMES[$room_id]}
-                    local time_diff=$((current_time - activation_time))
-
-                    if [ "$time_diff" -gt "$MAX_OPEN_WINDOW_DURATION" ]; then
-                        log_message "❄️ Account $account_index: $room_name: Open window detected for more than $MAX_OPEN_WINDOW_DURATION seconds. Cancelling open window mode."
-                        # Cancel open window mode for the room
-                        curl -s -X DELETE "https://hops.tado.com/homes/$home_id/rooms/$room_id/openWindow?ngsw-bypass=true" \
-                            -H "Authorization: Bearer ${TOKENS[$account_index]}"
-                        handle_curl_error
-                        log_message "✅ Account $account_index: Cancelled open window mode for $room_name."
-                        unset "OPEN_WINDOW_ACTIVATION_TIMES[$room_id]"
-                        continue
-                    fi
+    echo "$rooms" | jq -c '.[]' | while read -r room; do
+        room_id=$(echo "$room" | jq -r '.id')
+        room_name=$(echo "$room" | jq -r '.name')
+    
+        # Not supported by Tado X??
+        #open_window_detection_supported=$(echo "$room" | jq -r '.openWindowDetection.supported')
+        #if [ "$open_window_detection_supported" = false ]; then
+            #continue
+        #fi
+    
+        # Not supported by Tado X??
+        #open_window_detection_enabled=$(echo "$room" | jq -r '.openWindowDetection.enabled')
+        #if [ "$open_window_detection_enabled" = false ]; then
+            #continue
+        #fi
+    
+        openWindowState=$(echo $room | jq -r '.openWindow')    
+        if [ "$openWindowState" == "null" ]; then
+            continue
+        fi
+    
+        openWindowState_activated=$(echo $openWindowState | jq -r '.activated')
+    
+        if [ "$openWindowState_activated" == "false" ]; then
+            current_time=$(date +%s)
+    
+            log_message "❄️ Account $account_index: $room_name: Open window detected, activating open window mode."
+            # Set open window mode for the room
+            curl -s -X POST "https://hops.tado.com/homes/$home_id/rooms/$room_id/openWindow?ngsw-bypass=true" \
+                -H "Authorization: Bearer ${TOKENS[$account_index]}"
+            handle_curl_error
+            log_message "🌬️ Account $account_index: $room_name: Activating OpenWindow mode."
+    
+            # Record the activation time
+            OPEN_WINDOW_ACTIVATION_TIMES[$room_id]=$current_time
+            
+        elif [ "$openWindowState_activated" == "true" ]; then
+            # Check if the open window mode was recently activated and MAX_OPEN_WINDOW_DURATION is set
+            if [ -n "${OPEN_WINDOW_ACTIVATION_TIMES[$room_id]}" ] && [ -n "$MAX_OPEN_WINDOW_DURATION" ]; then
+                local activation_time=${OPEN_WINDOW_ACTIVATION_TIMES[$room_id]}
+                local time_diff=$((current_time - activation_time))
+            
+                if [ "$time_diff" -gt "$MAX_OPEN_WINDOW_DURATION" ]; then
+                    log_message "❄️ Account $account_index: $room_name: Open window detected for more than $MAX_OPEN_WINDOW_DURATION seconds. Cancelling open window mode."
+                    # Cancel open window mode for the room
+                    curl -s -X DELETE "https://hops.tado.com/homes/$home_id/rooms/$room_id/openWindow?ngsw-bypass=true" \
+                        -H "Authorization: Bearer ${TOKENS[$account_index]}"
+                    handle_curl_error
+                    log_message "✅ Account $account_index:  $room_name: Cancelled open window mode."
+                    unset "OPEN_WINDOW_ACTIVATION_TIMES[$room_id]"
+                    continue
                 fi
             fi
-        done
+        fi
+    done
 
-        log_message "⏳ Account $account_index: Waiting for a change in devices location or for an open window.."
-    }
+    if [ "$ENABLE_GEOFENCING" == true ]; then   
+        log_message "⏳ Account $account_index: Waiting for a change in devices location or for an open window..."
+    else
+        log_message "⏳ Account $account_index: Waiting for an open window..."
+    fi
+}
 
 # Main execution loop
 for (( i=1; i<=NUM_ACCOUNTS; i++ )); do
@@ -238,7 +236,7 @@ for (( i=1; i<=NUM_ACCOUNTS; i++ )); do
 
     # Loop to monitor home state
     while true; do
-        homeState "$i"
+        stateDetection "$i"
         sleep "$CHECKING_INTERVAL"
     done
 done
