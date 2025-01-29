@@ -124,7 +124,7 @@ homeState() {
       log_message "🏠 Account $account_index: Geofencing enabled."
       local devices_str
       if  [ ${#devices_tracking_enabled[@]} -eq 0 ]; then
-          log_message "No devices with geo tracking enabled found. Skipping geofencing."
+          log_message "🏠 Account $account_index: No devices with geo tracking enabled found. Skipping geofencing."
       elif [ ${#devices_home[@]} -gt 0 ] && [ "$home_state" == "HOME" ]; then
           devices_str=$(IFS=,; echo "${devices_home[*]}")
           log_message "🏠 Account $account_index: Home is in HOME Mode, the devices $devices_str are at home."
