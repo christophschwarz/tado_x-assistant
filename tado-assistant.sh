@@ -129,7 +129,7 @@ log_message() {
 }
 
 stateDetection() {
-    local home_state mobile_devices devices_away devices_str rooms room_id room_name home_id current_time account_index token_var
+    local home_state mobile_devices devices_away devices_str rooms room_id room_name home_id current_time account_index
     local open_window_detection_supported open_window_detection_enabled open_window_detected
 
     account_index=$1
