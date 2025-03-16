@@ -8,7 +8,7 @@ LOG_DIR=$(dirname "$LOG_FILE")
 mkdir -p "$LOG_DIR"
 
 declare -A OPEN_WINDOW_ACTIVATION_TIMES TOKENS REFRESH_TOKENS EXPIRY_TIMES HOME_IDS
-LAST_MESSAGE="" # Used to prevent duplicate messages
+LAST_MESSAGE="" # Used to prevent duplicate messages in log
 
 # Reset the log file if it's older than 10 days
 reset_log_if_needed() {
@@ -47,7 +47,7 @@ handle_curl_error() {
 }
 
 # Init refresh token
-intRefreshToken()
+initRefreshToken()
 {
     local account_index=$1
     local refresh_token_var=$2
@@ -118,6 +118,7 @@ getHomeId()
     log_message "🏠 Account $i: Found home ID $home_id"
 }
 
+# Log function
 log_message() {
     local message="$1"
     reset_log_if_needed
@@ -128,6 +129,7 @@ log_message() {
     echo "$(date '+%d-%m-%Y %H:%M:%S') # $message"
 }
 
+# Tado state detection function
 stateDetection() {
     local home_state mobile_devices devices_away devices_str rooms room_id room_name home_id current_time account_index
     local open_window_detection_supported open_window_detection_enabled open_window_detected
@@ -267,11 +269,11 @@ for (( i=1; i<=NUM_ACCOUNTS; i++ )); do
     LOG_FILE=${!LOG_FILE_VAR:-'/var/log/tado-assistant.log'}
 
     # Init
-    intRefreshToken "$i" "$TOKEN_VAR"
+    initRefreshToken "$i" "$TOKEN_VAR"
     login "$i"
     getHomeId "$i"
 
-    # Loop to monitor home state
+    # Loop to monitor state
     while true; do
         stateDetection "$i"
         sleep "$CHECKING_INTERVAL"
