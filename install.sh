@@ -167,8 +167,6 @@ set_env_variables() {
         {
             echo "export TADO_ACCESS_TOKEN_$i='$access_token'"
             echo "export TADO_REFRESH_TOKEN_$i='$refresh_token'" 
-            echo "export TADO_USERNAME_$i='$escaped_username'"
-            echo "export TADO_PASSWORD_$i='$escaped_password'"
             echo "export CHECKING_INTERVAL_$i='${CHECKING_INTERVAL:-15}'"
             echo "export MAX_OPEN_WINDOW_DURATION_$i='${MAX_OPEN_WINDOW_DURATION:-}'"
             echo "export ENABLE_GEOFENCING_$i='${ENABLE_GEOFENCING:-true}'"

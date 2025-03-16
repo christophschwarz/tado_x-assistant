@@ -53,23 +53,28 @@ login() {
     local old_refresh_token="${!refresh_token_var}"
     local response expires_in token new_refresh_token
 
+    if [ -z "$old_refresh_token" ] || [ "$old_refresh_token" = "null" ]; then
+        log_message "❌ No valid refresh token for account $i. Please reinstall or re-auth."
+        exit 1
+    fi
+
     response=$(curl -s -X POST "https://login.tado.com/oauth2/token" \
         -d "client_id=1bb50063-6b0c-4d11-bd99-387f4a91cc46" \
         -d "grant_type=refresh_token" \
         -d "refresh_token=$old_refresh_token")
     handle_curl_error
 
-    token=$(echo "$response" | jq -r '.access_token')
+    token=$(echo "$response" | jq -r '.access_token // empty')
     if [ -z "$token" ] || [ "$token" == "null" ]; then
         log_message "❌ Login error for account $account_index: Failed to refresh token."
         exit 1
     fi
 
     TOKENS[$account_index]=$token
-    expires_in=$(echo "$response" | jq -r '.expires_in')
+    expires_in=$(echo "$response" | jq -r '.expires_in // 600')
     EXPIRY_TIMES[$account_index]=$(($(date +%s) + expires_in - 30))
 
-    new_refresh_token=$(echo "$response" | jq -r '.refresh_token')
+    new_refresh_token=$(echo "$response" | jq -r '.refresh_token // empty')
     sed -i "s|^export TADO_REFRESH_TOKEN_$i=.*|export TADO_REFRESH_TOKEN_$i='$new_refresh_token'|" /etc/tado-assistant.env
 
     log_message "♻️ Refreshed token for account $i."
