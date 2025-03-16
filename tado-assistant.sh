@@ -85,6 +85,7 @@ login() {
 
 getHomeId()
 {
+    local account_index=$1
     local home_data home_id
     
     home_data=$(curl -s -X GET "https://my.tado.com/api/v2/me" -H "Authorization: Bearer ${TOKENS[$account_index]}")
@@ -251,7 +252,7 @@ for (( i=1; i<=NUM_ACCOUNTS; i++ )); do
 
     # Login and get the home ID
     login "$i" "$TOKEN_VAR"
-    getHomeId
+    getHomeId "$i"
 
     # Loop to monitor home state
     while true; do
