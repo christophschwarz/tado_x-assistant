@@ -79,6 +79,7 @@ login() {
     token=$(echo "$response" | jq -r '.access_token // empty')
     if [ -z "$token" ] || [ "$token" == "null" ]; then
         log_message "❌ Login error for account $account_index: Failed to refresh token."
+        log_message "$response"
         exit 1
     fi
 
