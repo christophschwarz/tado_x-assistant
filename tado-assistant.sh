@@ -58,13 +58,17 @@ intRefreshToken()
         exit 1
     fi
 
-    REFRESH_TOKENS[$account_index]=${!refresh_token_var}  
+    REFRESH_TOKENS[$account_index]=${!refresh_token_var}
+
+    log_message "♻️ Refresh token for account $i initialized."
 }
 
 # Login function
 login() {
     local account_index=$1  
     local response expires_in token refresh_token
+
+    log_message "♻️ Old refresh token: ${REFRESH_TOKENS[$account_index]}"
 
     response=$(curl -s -X POST "https://login.tado.com/oauth2/token" \
         -d "client_id=1bb50063-6b0c-4d11-bd99-387f4a91cc46" \
@@ -80,7 +84,7 @@ login() {
 
     TOKENS[$account_index]=$token
     expires_in=$(echo "$response" | jq -r '.expires_in // 600')
-    EXPIRY_TIMES[$account_index]=$(($(date +%s) + expires_in - 60))
+    EXPIRY_TIMES[$account_index]=$(($(date +%s) + expires_in - 30))
 
     refresh_token=$(echo "$response" | jq -r '.refresh_token // empty')
     sed -i "s|^export TADO_REFRESH_TOKEN_$i=.*|export TADO_REFRESH_TOKEN_$i='$refresh_token'|" /etc/tado-assistant.env
@@ -91,6 +95,8 @@ login() {
     fi
 
     REFRESH_TOKENS[$account_index]=$refresh_token 
+
+    log_message "♻️ New refresh token: ${REFRESH_TOKENS[$account_index]}"
 
     log_message "♻️ Refreshed token for account $i."
 }
@@ -106,7 +112,7 @@ getHomeId()
 
     home_id=$(echo "$home_data" | jq -r '.homes[0].id')
     if [ -z "$home_id" ]; then
-        log_message "⚠️ Error fetching home ID for account $account_index!"
+        log_message "❌ Error fetching home ID for account $account_index!"
         exit 1
     fi
 
@@ -130,12 +136,11 @@ stateDetection() {
     local open_window_detection_supported open_window_detection_enabled open_window_detected
 
     account_index=$1
-    token_var=$2
     home_id=${HOME_IDS[$account_index]}
     current_time=$(date +%s)
 
     if [ -n "${EXPIRY_TIMES[$account_index]}" ] && [ "$current_time" -ge "${EXPIRY_TIMES[$account_index]}" ]; then
-        login "$account_index" "$token_var"
+        login "$account_index"
     fi
 
     # Do geofencing when enabled
@@ -271,7 +276,7 @@ for (( i=1; i<=NUM_ACCOUNTS; i++ )); do
 
     # Loop to monitor home state
     while true; do
-        stateDetection "$i" "$TOKEN_VAR"
+        stateDetection "$i"
         sleep "$CHECKING_INTERVAL"
     done
 done

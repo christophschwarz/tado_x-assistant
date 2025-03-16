@@ -75,6 +75,7 @@ install_dependencies() {
 
 # 2. Set Environment Variables
 set_env_variables() {
+    echo
     echo "Setting up environment variables for multiple Tado accounts..."
 
     # Prompt for the number of accounts
@@ -86,6 +87,7 @@ set_env_variables() {
     # Loop through each account for configuration
     i=1
     while [ "$i" -le "$NUM_ACCOUNTS" ]; do
+        echo
         echo "Configuring account $i..."
         echo "Requesting device code from tado°..."
 
