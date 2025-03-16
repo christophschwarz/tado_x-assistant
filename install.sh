@@ -172,7 +172,7 @@ set_env_variables() {
             echo "export CHECKING_INTERVAL_$i='${CHECKING_INTERVAL:-15}'"
             echo "export MAX_OPEN_WINDOW_DURATION_$i='${MAX_OPEN_WINDOW_DURATION:-}'"
             echo "export ENABLE_GEOFENCING_$i='${ENABLE_GEOFENCING:-true}'"
-            echo "export ENABLE_LOG_$i='${ENABLE_LOG:-false}'"
+            echo "export ENABLE_LOG_$i='${ENABLE_LOG:-true}'"
             echo "export LOG_FILE_$i='${LOG_FILE:-/var/log/tado-assistant.log}'"
         } >> /etc/tado-assistant.env
 
