@@ -12,7 +12,7 @@ The following modifications has been made:
 - Improved **logging**: Duplicated messages are not written to the log file. Logging is now on by default. 
   
 Thanks to 
-- [BrainicHQ](https://github.com/BrainicHQ)  for the [original code](https://github.com/BrainicHQ/tado-assistant)
+- [Brainic](https://github.com/BrainicHQ)  for the [original code](https://github.com/BrainicHQ/tado-assistant)
 - [Vincent Cox](https://github.com/vincentcox) for his [code](https://github.com/vincentcox/tado-assistant) regarding the new authentication method
 
 
