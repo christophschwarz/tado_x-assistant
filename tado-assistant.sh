@@ -50,7 +50,7 @@ handle_curl_error() {
 login() {
     local account_index=$1
     local refresh_token_var=$2
-    local old_refresh_token="${!token_var}"
+    local old_refresh_token="${!refresh_token_var}"
     local response expires_in token new_refresh_token
 
     response=$(curl -s -X POST "https://login.tado.com/oauth2/token" \
