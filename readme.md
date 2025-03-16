@@ -14,6 +14,7 @@ The following modifications has been made:
 Thanks to 
 - [Brainic](https://github.com/BrainicHQ)  for the [original code](https://github.com/BrainicHQ/tado-assistant)
 - [Vincent Cox](https://github.com/vincentcox) for his [code](https://github.com/vincentcox/tado-assistant) regarding the new authentication method
+- [Ferdinando Terranova](https://github.com/gedhi) for his documentation of the [Tado X API](https://github.com/gedhi/tadox-postman-collection)
 
 
 # 🏡 Tado X Assistant: Your User-Friendly, Free Tado Auto-Assist Alternative
