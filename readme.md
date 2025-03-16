@@ -128,8 +128,8 @@ environment variables:
 
 For each account (replace 'n' with the account number, e.g., 1, 2, 3, ...):
 
-- `TADO_ACCESS_TOKEN_n`: Will be generated when running sudo ./install.sh.
-- `TADO_REFRESH_TOKEN_n`: Will be generated when running sudo ./install.sh.
+- `TADO_ACCESS_TOKEN_n`: Will be generated when running `sudo ./install.sh`.
+- `TADO_REFRESH_TOKEN_n`: Will be generated when running `sudo ./install.sh`.
 - `CHECKING_INTERVAL_n`: Frequency (in seconds) for home state checks for the nth account. Default is every 15 seconds.
 - `ENABLE_GEOFENCING_n`: Toggle geofencing check for the nth account. Values: `true` or `false`. Default is `true`.
 - `ENABLE_LOG_n`: Toggle logging for the nth account. Values: `true` or `false`. Default is `true`.
