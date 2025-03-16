@@ -2,7 +2,7 @@
 
 Fork of [tado-assistant](https://github.com/BrainicHQ/tado-assistant), modified for **Tado X**.
 
-The following additinal modifications has been made:
+The following modifications has been made:
 
 - Supports **Tado X** instead of **Tado**
 - Support for **new Tado authentication method**
