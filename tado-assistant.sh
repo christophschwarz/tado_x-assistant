@@ -49,31 +49,36 @@ handle_curl_error() {
 # Login function
 login() {
     local account_index=$1
-    local username_var=$2
-    local password_var=$3
-    local username=${!username_var}
-    local password=${!password_var}
-    local response expires_in token home_data home_id
+    local refresh_token_var=$2
+    local old_refresh_token="${!token_var}"
+    local response expires_in token new_refresh_token
 
-    response=$(curl -s -X POST "https://auth.tado.com/oauth/token" \
-        -d 'client_id=public-api-preview' \
-        -d 'client_secret=4HJGRffVR8xb3XdEUQpjgZ1VplJi6Xgw' \
-        -d 'grant_type=password' \
-        -d 'scope=home.user' \
-        --data-urlencode 'username='"$username" \
-        --data-urlencode 'password='"$password")
+    response=$(curl -s -X POST "https://login.tado.com/oauth2/token" \
+        -d "client_id=1bb50063-6b0c-4d11-bd99-387f4a91cc46" \
+        -d "grant_type=refresh_token" \
+        -d "refresh_token=$old_refresh_token")
     handle_curl_error
 
     token=$(echo "$response" | jq -r '.access_token')
     if [ -z "$token" ] || [ "$token" == "null" ]; then
-        log_message "❌ Login error for account $account_index: Please check the username and password. Then restart the container or service."
+        log_message "❌ Login error for account $account_index: Failed to refresh token."
         exit 1
     fi
 
     TOKENS[$account_index]=$token
     expires_in=$(echo "$response" | jq -r '.expires_in')
-    EXPIRY_TIMES[$account_index]=$(($(date +%s) + expires_in - 60))
+    EXPIRY_TIMES[$account_index]=$(($(date +%s) + expires_in - 30))
 
+    new_refresh_token=$(echo "$response" | jq -r '.refresh_token')
+    sed -i "s|^export TADO_REFRESH_TOKEN_$i=.*|export TADO_REFRESH_TOKEN_$i='$new_refresh_token'|" /etc/tado-assistant.env
+
+    log_message "♻️ Refreshed token for account $i."
+}
+
+getHomeId()
+{
+    local home_data home_id
+    
     home_data=$(curl -s -X GET "https://my.tado.com/api/v2/me" -H "Authorization: Bearer ${TOKENS[$account_index]}")
     handle_curl_error
 
@@ -84,6 +89,8 @@ login() {
     fi
 
     HOME_IDS[$account_index]=$home_id
+
+    log_message "🏠 Account $i: Found home ID $home_id"
 }
 
 log_message() {
@@ -105,7 +112,7 @@ stateDetection() {
     current_time=$(date +%s)
 
     if [ -n "${EXPIRY_TIMES[$account_index]}" ] && [ "$current_time" -ge "${EXPIRY_TIMES[$account_index]}" ]; then
-        login "$account_index" "TADO_USERNAME_$account_index" "TADO_PASSWORD_$account_index"
+        login "$account_index" "TADO_REFRESH_TOKEN_$account_index"
     fi
 
     # Do geofencing when enabled
@@ -220,8 +227,7 @@ stateDetection() {
 
 # Main execution loop
 for (( i=1; i<=NUM_ACCOUNTS; i++ )); do
-    USERNAME_VAR="TADO_USERNAME_$i"
-    PASSWORD_VAR="TADO_PASSWORD_$i"
+    TOKEN_VAR="TADO_REFRESH_TOKEN_$1"
     CHECKING_INTERVAL_VAR="CHECKING_INTERVAL_$i"
     MAX_OPEN_WINDOW_DURATION_VAR="MAX_OPEN_WINDOW_DURATION_$i"
     ENABLE_GEOFENCING_VAR="ENABLE_GEOFENCING_$i"
@@ -236,7 +242,8 @@ for (( i=1; i<=NUM_ACCOUNTS; i++ )); do
     LOG_FILE=${!LOG_FILE_VAR:-'/var/log/tado-assistant.log'}
 
     # Login and get the home ID
-    login "$i" "$USERNAME_VAR" "$PASSWORD_VAR"
+    login "$i" "$TOKEN_VAR"
+    getHomeId
 
     # Loop to monitor home state
     while true; do
