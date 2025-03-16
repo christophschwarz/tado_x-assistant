@@ -1,4 +1,22 @@
-# 🏡 Tado Assistant: Your User-Friendly, Free Tado Auto-Assist Alternative
+# About
+
+Fork of [tado-assistant](https://github.com/BrainicHQ/tado-assistant), modified for **Tado X**.
+
+The following additinal modifications has been made:
+
+- Supports **Tado X** instead of **Tado**
+- Support for **new Tado authentication method**
+- Revised  **State Monitoring**: It will be taken into account if geo tracking is enabled for any device.
+  Therefore, geo tracking now not only be controlled by the respective script setting, but based on your device settings.
+  Instead of tracking devices at home, its now checked for devices away for a more conservative state switching.
+- Improved **logging**: Duplicated messages are not written to the log file. Logging is now on by default. 
+  
+Thanks to 
+- [BrainicHQ](https://github.com/BrainicHQ)  for the [original code](https://github.com/BrainicHQ/tado-assistant)
+- [Vincent Cox](https://github.com/vincentcox) for his [code](https://github.com/vincentcox/tado-assistant) regarding the new authentication method
+
+
+# 🏡 Tado X Assistant: Your User-Friendly, Free Tado Auto-Assist Alternative
 
 Discover the ultimate free alternative to Tado's Auto-Assist with Tado Assistant! This innovative utility enhances your
 Tado smart home experience by seamlessly integrating with the Tado API, offering advanced features like mobile
@@ -38,7 +56,7 @@ logos mentioned are the property of their respective owners. Please use this sof
 1. Clone this repository to dive in:
 
    ```bash
-   git clone https://github.com/BrainicHQ/tado-assistant.git
+   git clone https://github.com/christophschwarz/tado_x-assistant.git
    ```
 
    ```bash
@@ -65,65 +83,6 @@ During the installation, the script will:
 - Introduce a new configuration option for the 'Open Window' feature. You will be prompted to enter the maximum
   duration (in seconds) that the system should wait before resuming normal operation after an open window is detected.
   You can specify a custom duration or leave it empty to use the default duration set in the Tado app.
-
-## 🐳 Docker Installation
-
-Tado Assistant can now be run as a Docker container with support for multiple accounts, making it platform-independent
-and simplifying the setup process for users with multiple Tado devices. Here's how you can get it up and running with
-Docker:
-
-1. **Pull the Docker Image:**
-   Pull the latest version of Tado Assistant from Docker Hub:
-
-   ```bash
-   docker pull brainic/tado-assistant
-   ```
-
-2. **Run the Docker Container:**
-   After pulling the image, you can run Tado Assistant in a Docker container, specifying environment variables for each
-   account you wish to manage. Replace `<LOG_FILE_PATH_n>` with your desired log file path for each account if you want
-   to
-   specify a custom one.
-
-   ```bash
-   docker run -d --name tado-assistant \
-           -e NUM_ACCOUNTS=2 \
-           -e TADO_USERNAME_1='your_username_1' \
-           -e TADO_PASSWORD_1='your_password_1' \
-           -e CHECKING_INTERVAL_1=15 \
-           -e ENABLE_GEOFENCING_1=true \
-           -e ENABLE_LOG_1=true \
-           -e LOG_FILE_1=<LOG_FILE_PATH_1> \
-           -e MAX_OPEN_WINDOW_DURATION_1= \
-           -e TADO_USERNAME_2='your_username_2' \
-           -e TADO_PASSWORD_2='your_password_2' \
-           -e CHECKING_INTERVAL_2=15 \
-           -e ENABLE_GEOFENCING_2=true \
-           -e ENABLE_LOG_2=true \
-           -e LOG_FILE_2=<LOG_FILE_PATH_2> \
-           -e MAX_OPEN_WINDOW_DURATION_2= \
-           brainic/tado-assistant
-   ```
-
-   Note: Adjust the environment variables according to the number of accounts and your specific needs.
-
-3. **Docker Logs:**
-   To check the logs of your Tado Assistant Docker container, use:
-
-   ```bash
-   docker logs tado-assistant
-   ```
-
-4. **Stopping and Removing the Container:**
-   When you need to stop and remove the container, use the following commands:
-
-   ```bash
-   docker stop tado-assistant
-   docker rm tado-assistant
-   ```
-
-This Docker setup offers a straightforward way to deploy Tado Assistant without the need for manual environment setup on
-your host system.
 
 ## 🔄 Updating
 
@@ -169,11 +128,11 @@ environment variables:
 
 For each account (replace 'n' with the account number, e.g., 1, 2, 3, ...):
 
-- `TADO_USERNAME_n`: Your Tado account username for the nth account.
-- `TADO_PASSWORD_n`: Your Tado account password for the nth account.
+- `TADO_ACCESS_TOKEN_n`: Will be generated when running sudo ./install.sh.
+- `TADO_REFRESH_TOKEN_n`: Will be generated when running sudo ./install.sh.
 - `CHECKING_INTERVAL_n`: Frequency (in seconds) for home state checks for the nth account. Default is every 15 seconds.
 - `ENABLE_GEOFENCING_n`: Toggle geofencing check for the nth account. Values: `true` or `false`. Default is `true`.
-- `ENABLE_LOG_n`: Toggle logging for the nth account. Values: `true` or `false`. Default is `false`.
+- `ENABLE_LOG_n`: Toggle logging for the nth account. Values: `true` or `false`. Default is `true`.
 - `LOG_FILE_n`: Destination for the log file for the nth account. Default is `/var/log/tado-assistant.log`.
 - `MAX_OPEN_WINDOW_DURATION_n`: Define the maximum duration (in seconds) for the 'Open Window' detection feature to be
   active for the nth account. Leave this field empty to use the default duration set in the Tado app.
@@ -227,46 +186,6 @@ environment is always optimal. Here's how you can interact with it:
 Remember, Tado Assistant is designed to be hands-off. Once set up, it should require minimal interaction, letting you
 enjoy a comfortable home environment without any fuss.
 
-## 🌟 Running Tado Assistant Continuously
-
-Ensuring Tado Assistant runs continuously is crucial for maintaining an optimal home environment. Here are some
-cost-effective solutions for running the software 24/7, suitable for both technical and non-technical users.
-
-### ☁️ Free Tier Cloud Services
-
-Cloud services offer reliable and free solutions to run small-scale projects like Tado Assistant. Here are some popular
-options:
-
-#### AWS EC2
-
-- **Amazon Web Services (AWS)** provides a free tier EC2 instance which is more than capable of handling small
-  applications.
-- [AWS EC2 Free Tier Guide](https://aws.amazon.com/free/)
-
-#### Google Cloud Platform
-
-- **Google Cloud Platform (GCP)** offers a free tier with a micro VM instance.
-- [GCP Free Tier Guide](https://cloud.google.com/free/docs/free-cloud-features)
-
-#### Microsoft Azure
-
-- **Microsoft Azure** also provides a free tier with virtual machines.
-- [Azure Free Tier Guide](https://azure.microsoft.com/en-us/free/)
-
-### 🖥️ Raspberry Pi or Old Laptop/PC
-
-For those who prefer a more hands-on approach or wish to utilize existing hardware:
-
-#### Raspberry Pi
-
-- A **Raspberry Pi** can be a cost-effective and energy-efficient server.
-- [Setting up Tado Assistant on Raspberry Pi](https://www.raspberrypi.com/documentation/computers/getting-started.html)
-
-#### Repurposed Old Laptop/PC
-
-- Use an **old laptop or PC** as a dedicated server for Tado Assistant.
-- Ensure it's configured to run the software on startup and adjust power settings for continuous operation.
-
 ## 📜 Logs
 
 If you've enabled logging (`ENABLE_LOG=true`), you can peek into the log file (default
@@ -307,16 +226,3 @@ Currently, a dedicated uninstallation script is not provided. To manually uninst
     ```
 
 5. Optionally, uninstall `curl` and `jq` if they were installed by the script and are no longer needed.
-
-## 🤝 Contributing
-
-Your insights can make Tado Assistant even better! We welcome contributions. Please ensure your code aligns with the
-project's ethos. Feel free to submit pull requests or open issues for suggestions, improvements, or bug reports.
-
-## 🍕 Support
-
-Love Tado Assistant? You can show your support by starring the repository, sharing it with others,
-or [buying me a pizza](https://www.buymeacoffee.com/silviu). All contributions are greatly appreciated and help keep the
-project running.
-
-Alternatively, contributions to the codebase or documentation are also welcome. Every bit of help counts!
