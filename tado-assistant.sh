@@ -7,7 +7,7 @@
 LOG_DIR=$(dirname "$LOG_FILE")
 mkdir -p "$LOG_DIR"
 
-declare -A OPEN_WINDOW_ACTIVATION_TIMES TOKENS EXPIRY_TIMES HOME_IDS
+declare -A OPEN_WINDOW_ACTIVATION_TIMES TOKENS REFRESH_TOKENS EXPIRY_TIMES HOME_IDS
 LAST_MESSAGE="" # Used to prevent duplicate messages
 
 # Reset the log file if it's older than 10 days
@@ -46,24 +46,30 @@ handle_curl_error() {
     return 0
 }
 
-# Login function
-login() {
+# Init refresh token
+intRefreshToken()
+{
     local account_index=$1
     local refresh_token_var=$2
     local old_refresh_token=${!refresh_token_var}
-    local response expires_in token new_refresh_token
 
     if [ -z "$old_refresh_token" ] || [ "$old_refresh_token" = "null" ]; then
         log_message "❌ No valid refresh token for account $i. Please reinstall or re-auth."
         exit 1
     fi
 
-    log_message "Old token: $old_refresh_token"
+    REFRESH_TOKENS[$account_index]=${!refresh_token_var}  
+}
+
+# Login function
+login() {
+    local account_index=$1  
+    local response expires_in token refresh_token
 
     response=$(curl -s -X POST "https://login.tado.com/oauth2/token" \
         -d "client_id=1bb50063-6b0c-4d11-bd99-387f4a91cc46" \
         -d "grant_type=refresh_token" \
-        -d "refresh_token=$old_refresh_token")
+        -d "refresh_token=${REFRESH_TOKENS[$account_index]}")
     handle_curl_error
 
     token=$(echo "$response" | jq -r '.access_token // empty')
@@ -76,14 +82,20 @@ login() {
     expires_in=$(echo "$response" | jq -r '.expires_in // 600')
     EXPIRY_TIMES[$account_index]=$(($(date +%s) + expires_in - 60))
 
-    new_refresh_token=$(echo "$response" | jq -r '.refresh_token // empty')
-    sed -i "s|^export TADO_REFRESH_TOKEN_$i=.*|export TADO_REFRESH_TOKEN_$i='$new_refresh_token'|" /etc/tado-assistant.env
+    refresh_token=$(echo "$response" | jq -r '.refresh_token // empty')
+    sed -i "s|^export TADO_REFRESH_TOKEN_$i=.*|export TADO_REFRESH_TOKEN_$i='$refresh_token'|" /etc/tado-assistant.env
 
-    log_message "New token: $new_refresh_token"
+    if [ -z "$refresh_token" ] || [ "$refresh_token" == "null" ]; then
+        log_message "❌ Login error for account $account_index: Failed to get new refresh token."
+        exit 1
+    fi
+
+    REFRESH_TOKENS[$account_index]=$refresh_token 
 
     log_message "♻️ Refreshed token for account $i."
 }
 
+# Get Home ID function
 getHomeId()
 {
     local account_index=$1
@@ -252,8 +264,9 @@ for (( i=1; i<=NUM_ACCOUNTS; i++ )); do
     ENABLE_LOG=${!ENABLE_LOG_VAR:-false}
     LOG_FILE=${!LOG_FILE_VAR:-'/var/log/tado-assistant.log'}
 
-    # Login and get the home ID
-    login "$i" "$TOKEN_VAR"
+    # Init
+    intRefreshToken "$i" "$TOKEN_VAR"
+    login "$i"
     getHomeId "$i"
 
     # Loop to monitor home state
