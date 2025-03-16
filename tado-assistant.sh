@@ -53,9 +53,6 @@ login() {
     local old_refresh_token=${!refresh_token_var}
     local response expires_in token new_refresh_token
 
-    echo $refresh_token_var
-    echo $old_refresh_token
-
     if [ -z "$old_refresh_token" ] || [ "$old_refresh_token" = "null" ]; then
         log_message "❌ No valid refresh token for account $i. Please reinstall or re-auth."
         exit 1
