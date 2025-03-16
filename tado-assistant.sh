@@ -58,6 +58,8 @@ login() {
         exit 1
     fi
 
+    log_message "Old token: $old_refresh_token"
+
     response=$(curl -s -X POST "https://login.tado.com/oauth2/token" \
         -d "client_id=1bb50063-6b0c-4d11-bd99-387f4a91cc46" \
         -d "grant_type=refresh_token" \
@@ -72,10 +74,12 @@ login() {
 
     TOKENS[$account_index]=$token
     expires_in=$(echo "$response" | jq -r '.expires_in // 600')
-    EXPIRY_TIMES[$account_index]=$(($(date +%s) + expires_in - 30))
+    EXPIRY_TIMES[$account_index]=$(($(date +%s) + expires_in - 60))
 
     new_refresh_token=$(echo "$response" | jq -r '.refresh_token // empty')
     sed -i "s|^export TADO_REFRESH_TOKEN_$i=.*|export TADO_REFRESH_TOKEN_$i='$new_refresh_token'|" /etc/tado-assistant.env
+
+    log_message "New token: $new_refresh_token"
 
     log_message "♻️ Refreshed token for account $i."
 }
@@ -110,15 +114,16 @@ log_message() {
 }
 
 stateDetection() {
-    local home_state mobile_devices devices_away devices_str rooms room_id room_name home_id current_time account_index
+    local home_state mobile_devices devices_away devices_str rooms room_id room_name home_id current_time account_index token_var
     local open_window_detection_supported open_window_detection_enabled open_window_detected
 
     account_index=$1
+    token_var=$2
     home_id=${HOME_IDS[$account_index]}
     current_time=$(date +%s)
 
     if [ -n "${EXPIRY_TIMES[$account_index]}" ] && [ "$current_time" -ge "${EXPIRY_TIMES[$account_index]}" ]; then
-        login "$account_index" "TADO_REFRESH_TOKEN_$account_index"
+        login "$account_index" "$token_var"
     fi
 
     # Do geofencing when enabled
@@ -253,7 +258,7 @@ for (( i=1; i<=NUM_ACCOUNTS; i++ )); do
 
     # Loop to monitor home state
     while true; do
-        stateDetection "$i"
+        stateDetection "$i" "$TOKEN_VAR"
         sleep "$CHECKING_INTERVAL"
     done
 done
